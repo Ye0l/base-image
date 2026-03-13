@@ -69,7 +69,7 @@ RUN \
     git clone https://github.com/felixszeto/ComfyUI-RequestNodes.git && \
     uv pip install --no-cache-dir -r ComfyUI-RequestNodes/requirements.txt && \
     git clone https://github.com/wawahuy/ComfyUI-HTTP.git && \
-    uv pip install --no-cache-dir -r ComfyUI-HTTP/requirements.txt
+    uv pip install --no-cache-dir -r ComfyUI-HTTP/requirements.txt && \
 
     # Quick startup test in CPU mode to ensure requirements ready and startup succeeds
     cd /opt/workspace-internal/ComfyUI && \
