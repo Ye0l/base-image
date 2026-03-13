@@ -34,19 +34,39 @@ RUN \
     # Install critical custom nodes
     cd /opt/workspace-internal/ComfyUI/custom_nodes && \
     git clone https://github.com/Comfy-Org/ComfyUI-Manager && \
+    uv pip install --no-cache-dir -r ComfyUI-Manager/requirements.txt && \
 
     git clone https://github.com/chibiace/ComfyUI-Chibi-Nodes.git && \
-    git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
-    git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
-    git clone https://github.com/alexopus/ComfyUI-Image-Saver.git && \
-    git clone https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
-    git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
-    git clone https://github.com/felixszeto/ComfyUI-RequestNodes.git && \
-    git clone https://github.com/wawahuy/ComfyUI-HTTP.git && \
+    uv pip install --no-cache-dir -r ComfyUI-Chibi-Nodes/requirements.txt && \
 
-    uv pip install --no-cache-dir -r ComfyUI-Manager/requirements.txt && \
+    git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
+    uv pip install --no-cache-dir -r efficiency-nodes-comfyui/requirements.txt && \
+
+    git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
+    uv pip install --no-cache-dir -r GER/ComfyUI_JPS-Nodes/requirements.txt && \
+
+    git clone https://github.com/alexopus/ComfyUI-Image-Saver.git && \
+    uv pip install --no-cache-dir -r ComfyUI-Image-Saver/requirements.txt && \
+
+    git clone https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
+    uv pip install --no-cache-dir -r ComfyUI_UltimateSDUpscale/requirements.txt && \
+
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    uv pip install --no-cache-dir -r ComfyUI-Impact-Pack/requirements.txt && \
+
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
+    uv pip install --no-cache-dir -r ComfyUI-Impact-Subpack/requirements.txt && \
+
+    git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
+    uv pip install --no-cache-dir -r ComfyUI-Easy-Use/requirements.txt && \
+
+    git clone https://github.com/felixszeto/ComfyUI-RequestNodes.git && \
+    uv pip install --no-cache-dir -r ComfyUI-RequestNodes/requirements.txt && \
+
+    git clone https://github.com/wawahuy/ComfyUI-HTTP.git && \
+    uv pip install --no-cache-dir -r ComfyUI-HTTP/requirements.txt && \
+
+
     # Quick startup test in CPU mode to ensure requirements ready and startup succeeds
     cd /opt/workspace-internal/ComfyUI && \
     LD_PRELOAD=libtcmalloc_minimal.so.4 \
