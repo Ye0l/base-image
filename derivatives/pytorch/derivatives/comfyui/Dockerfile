@@ -43,7 +43,7 @@ RUN \
     uv pip install --no-cache-dir -r efficiency-nodes-comfyui/requirements.txt && \
 
     git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
-    uv pip install --no-cache-dir -r GER/ComfyUI_JPS-Nodes/requirements.txt && \
+    uv pip install --no-cache-dir -r ComfyUI_JPS-Nodes/requirements.txt && \
 
     git clone https://github.com/alexopus/ComfyUI-Image-Saver.git && \
     uv pip install --no-cache-dir -r ComfyUI-Image-Saver/requirements.txt && \
