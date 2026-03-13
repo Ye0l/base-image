@@ -34,6 +34,18 @@ RUN \
     # Install critical custom nodes
     cd /opt/workspace-internal/ComfyUI/custom_nodes && \
     git clone https://github.com/Comfy-Org/ComfyUI-Manager && \
+
+    git clone https://github.com/chibiace/ComfyUI-Chibi-Nodes.git && \
+    git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
+    git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
+    git clone https://github.com/alexopus/ComfyUI-Image-Saver.git && \
+    git clone https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
+    git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
+    git clone https://github.com/felixszeto/ComfyUI-RequestNodes.git && \
+    git clone https://github.com/wawahuy/ComfyUI-HTTP.git && \
+
     uv pip install --no-cache-dir -r ComfyUI-Manager/requirements.txt && \
     # Quick startup test in CPU mode to ensure requirements ready and startup succeeds
     cd /opt/workspace-internal/ComfyUI && \
