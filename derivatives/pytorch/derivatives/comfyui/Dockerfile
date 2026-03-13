@@ -44,9 +44,8 @@ RUN \
     git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
     uv pip install --no-cache-dir -r efficiency-nodes-comfyui/requirements.txt && \
 
-    # 4. JPS-Nodes (경로 수정됨)
+    # 4. JPS-Nodes
     git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
-    uv pip install --no-cache-dir -r ComfyUI_JPS-Nodes/requirements.txt && \
 
     # 5. Image-Saver
     git clone https://github.com/alexopus/ComfyUI-Image-Saver.git && \
@@ -54,7 +53,6 @@ RUN \
 
     # 6. UltimateSDUpscale
     git clone https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
-    uv pip install --no-cache-dir -r ComfyUI_UltimateSDUpscale/requirements.txt && \
 
     # 7. Impact Pack (Subpack은 Impact Pack 설치 시 보통 해결됨)
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
@@ -66,7 +64,6 @@ RUN \
 
     # 9. RequestNodes & HTTP
     git clone https://github.com/felixszeto/ComfyUI-RequestNodes.git && \
-    uv pip install --no-cache-dir -r ComfyUI-RequestNodes/requirements.txt && \
     git clone https://github.com/wawahuy/ComfyUI-HTTP.git && \
     uv pip install --no-cache-dir -r ComfyUI-HTTP/requirements.txt && \
 
