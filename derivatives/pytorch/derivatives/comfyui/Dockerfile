@@ -54,9 +54,11 @@ RUN \
     # 6. UltimateSDUpscale
     git clone https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
 
-    # 7. Impact Pack (Subpack은 Impact Pack 설치 시 보통 해결됨)
+    # 7. Impact Pack
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
     uv pip install --no-cache-dir -r ComfyUI-Impact-Pack/requirements.txt && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
+    uv pip install --no-cache-dir -r ComfyUI-Impact-Subpack/requirements.txt && \
 
     # 8. Easy-Use
     git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
