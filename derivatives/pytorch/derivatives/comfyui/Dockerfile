@@ -39,7 +39,6 @@ RUN \
 
     # 2. Chibi-Nodes
     git clone https://github.com/chibiace/ComfyUI-Chibi-Nodes.git && \
-    uv pip install --no-cache-dir -r ComfyUI-Chibi-Nodes/requirements.txt && \
 
     # 3. Efficiency Nodes
     git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
