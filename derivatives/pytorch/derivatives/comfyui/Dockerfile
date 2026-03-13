@@ -32,40 +32,44 @@ RUN \
     cd /opt/workspace-internal/ComfyUI/models/ && \
     ln -s checkpoints ckpt && \
     # Install critical custom nodes
+    # 1. ComfyUI-Manager (필수)
     cd /opt/workspace-internal/ComfyUI/custom_nodes && \
     git clone https://github.com/Comfy-Org/ComfyUI-Manager && \
     uv pip install --no-cache-dir -r ComfyUI-Manager/requirements.txt && \
 
+    # 2. Chibi-Nodes
     git clone https://github.com/chibiace/ComfyUI-Chibi-Nodes.git && \
     uv pip install --no-cache-dir -r ComfyUI-Chibi-Nodes/requirements.txt && \
 
+    # 3. Efficiency Nodes
     git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
     uv pip install --no-cache-dir -r efficiency-nodes-comfyui/requirements.txt && \
 
+    # 4. JPS-Nodes (경로 수정됨)
     git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
     uv pip install --no-cache-dir -r ComfyUI_JPS-Nodes/requirements.txt && \
 
+    # 5. Image-Saver
     git clone https://github.com/alexopus/ComfyUI-Image-Saver.git && \
     uv pip install --no-cache-dir -r ComfyUI-Image-Saver/requirements.txt && \
 
+    # 6. UltimateSDUpscale
     git clone https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
     uv pip install --no-cache-dir -r ComfyUI_UltimateSDUpscale/requirements.txt && \
 
+    # 7. Impact Pack (Subpack은 Impact Pack 설치 시 보통 해결됨)
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
     uv pip install --no-cache-dir -r ComfyUI-Impact-Pack/requirements.txt && \
 
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
-    uv pip install --no-cache-dir -r ComfyUI-Impact-Subpack/requirements.txt && \
-
+    # 8. Easy-Use
     git clone https://github.com/yolain/ComfyUI-Easy-Use.git && \
     uv pip install --no-cache-dir -r ComfyUI-Easy-Use/requirements.txt && \
 
+    # 9. RequestNodes & HTTP
     git clone https://github.com/felixszeto/ComfyUI-RequestNodes.git && \
     uv pip install --no-cache-dir -r ComfyUI-RequestNodes/requirements.txt && \
-
     git clone https://github.com/wawahuy/ComfyUI-HTTP.git && \
-    uv pip install --no-cache-dir -r ComfyUI-HTTP/requirements.txt && \
-
+    uv pip install --no-cache-dir -r ComfyUI-HTTP/requirements.txt
 
     # Quick startup test in CPU mode to ensure requirements ready and startup succeeds
     cd /opt/workspace-internal/ComfyUI && \
