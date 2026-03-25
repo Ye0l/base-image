@@ -7,13 +7,16 @@
 # SLACK_WEBHOOK_URL
 # Note: Build matrix will need periodic updates as new Pytorch images become available
 
-name: Build ComfyUI Image
+name: Build ComfyUI-Custom Image
 
 on:
-  schedule:
-    # Run every 12 hours
-    - cron: '0 0,12 * * *'
-  
+  push:
+    branches:
+      - kstr-custom
+    paths:
+      - '/workspaces/base-image/derivatives/pytorch/derivatives/comfyui/Dockerfile'          # Dockerfile이 변경되었을 때만 실행
+      - '.github/workflows/**' # 또는 이 워크플로우 파일 자체가 변경되었을 때
+
   workflow_dispatch:
     inputs:
       COMFYUI_REF:
