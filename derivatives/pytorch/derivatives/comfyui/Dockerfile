@@ -67,6 +67,56 @@ RUN \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# 커스텀 노드 및 모델 다운로드를 위한 환경 변수 (실제 API URL로 변경 필요)
+ARG CUSTOM_API_URL="https://your-api-url.com/endpoint"
+
+RUN \
+    set -euo pipefail && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl wget && \
+    . /venv/main/bin/activate && \
+    cd /opt/workspace-internal/ComfyUI/custom_nodes && \
+    \
+    # 1. 커스텀 노드 다운로드 및 의존성 설치
+    echo "Fetching custom nodes..." && \
+    NODES_PAYLOAD='{"target": "nodes"}' && \
+    NODES_LIST=$(curl -s -X POST -H "Content-Type: application/json" -d "$NODES_PAYLOAD" "${CUSTOM_API_URL}") && \
+    # 응답 앞뒤의 큰따옴표 제거
+    NODES_LIST=$(echo "$NODES_LIST" | sed 's/"//g') && \
+    # 세미콜론(;)을 기준으로 배열 분리
+    IFS=';' read -ra NODE_URLS <<< "$NODES_LIST" && \
+    for url in "${NODE_URLS[@]}"; do \
+        if [ -n "$url" ]; then \
+            echo "Cloning node: $url" && \
+            git clone "$url" && \
+            repo_name=$(basename "$url" .git) && \
+            if [ -f "$repo_name/requirements.txt" ]; then \
+                uv pip install --no-cache-dir -r "$repo_name/requirements.txt"; \
+            fi \
+        fi; \
+    done && \
+    \
+    # 2. 커스텀 모델 다운로드
+    echo "Fetching custom models..." && \
+    MODELS_PAYLOAD='{"target": "build"}' && \
+    MODELS_LIST=$(curl -s -X POST -H "Content-Type: application/json" -d "$MODELS_PAYLOAD" "${CUSTOM_API_URL}") && \
+    MODELS_LIST=$(echo "$MODELS_LIST" | sed 's/"//g') && \
+    IFS=';' read -ra MODEL_ENTRIES <<< "$MODELS_LIST" && \
+    for entry in "${MODEL_ENTRIES[@]}"; do \
+        if [ -n "$entry" ]; then \
+            IFS='|' read -r model_url dest_path <<< "$entry"; \
+            # /workspace/ComfyUI 경로를 현재 도커 환경에 맞게 /opt/workspace-internal/ComfyUI 로 치환
+            real_dest_path=$(echo "$dest_path" | sed 's|^/workspace/ComfyUI|/opt/workspace-internal/ComfyUI|'); \
+            mkdir -p "$(dirname "$real_dest_path")" && \
+            echo "Downloading model to: $real_dest_path" && \
+            wget -qO "$real_dest_path" "$model_url" || echo "Warning: Failed to download $model_url"; \
+        fi; \
+    done && \
+    \
+    # 3. 캐시 및 임시 파일 정리
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Generally we do not ship with models, but this is used for benchmarking the comfyui-json pyworker
 # Always use a new RUN or COPY for each model added to keep layers to a reasonable size
 RUN \
