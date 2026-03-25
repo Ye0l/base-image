@@ -68,8 +68,8 @@ RUN \
     rm -rf /var/lib/apt/lists/*
 
 # 커스텀 노드 및 모델 다운로드를 위한 환경 변수 (실제 API URL로 변경 필요)
-ARG ${CUSTOM_API_URL}
-ARG ${HF_TOKEN}
+ARG CUSTOM_API_URL
+ARG HF_TOKEN
 
 RUN \
     set -euo pipefail && \
