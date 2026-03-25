@@ -168,6 +168,7 @@ jobs:
             --build-arg PYTORCH_BASE=${{ matrix.base_image }} \
             --build-arg COMFYUI_REF=${{ needs.preflight.outputs.comfyui-ref }} \
             --build-arg CUSTOM_API_URL=${{ secrets.CUSTOM_API_URL }} \
+            --build-arg HF_TOKEN=${{ secrets.HF_TOKEN }} \
             -t ${{ env.FULL_IMAGE }} \
             . --push
 

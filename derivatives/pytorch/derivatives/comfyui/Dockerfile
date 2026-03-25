@@ -109,7 +109,7 @@ RUN \
             real_dest_path=$(echo "$dest_path" | sed 's|^/workspace/ComfyUI|/opt/workspace-internal/ComfyUI|'); \
             mkdir -p "$(dirname "$real_dest_path")" && \
             echo "Downloading model to: $real_dest_path" && \
-            wget -qO "$real_dest_path" "$model_url" || echo "Warning: Failed to download $model_url"; \
+            wget --header="Authorization: Bearer ${HF_TOKEN}" -qO "$real_dest_path" "$model_url" || echo "Warning: Failed to download $model_url"; \
         fi; \
     done && \
     \
