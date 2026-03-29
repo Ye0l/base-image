@@ -14,10 +14,7 @@ export PIP_NO_INPUT=1
 export GIT_TERMINAL_PROMPT=0
 export DEBIAN_FRONTEND=noninteractive
 
-# Civitai API key 세팅 (CIVITAI_API_KEY -> civitai-downloader가 사용하는 CIVITAI_TOKEN으로 매핑)
-if [[ -n "${CIVITAI_API_KEY:-}" ]]; then
-  export CIVITAI_TOKEN="${CIVITAI_API_KEY}"
-fi
+
 
 # ============================================================
 # 1. n8n 동적 데이터 호출 (Vast.ai 환경 변수 N8N_WEBHOOK_URL 필요)
@@ -104,67 +101,6 @@ get_hf_token() {
   echo ""
 }
 
-# ============================================================
-# civitai-downloader 설치
-# ============================================================
-provisioning_install_civitai_downloader() {
-  if command -v download-model >/dev/null 2>&1; then
-    log "✅ civitai-downloader 이미 설치됨"
-    return 0
-  fi
-  log "📦 civitai-downloader 설치 중..."
-  curl -fSL https://raw.githubusercontent.com/ashleykleynhans/civitai-downloader/main/download.py \
-    -o /usr/local/bin/download-model
-  chmod +x /usr/local/bin/download-model
-  log "✅ civitai-downloader 설치 완료"
-}
-
-# civitai URL에서 모델 ID 추출
-# 지원 패턴:
-#   https://civitai.com/api/download/models/46846
-#   https://civitai.com/models/1234567?modelVersionId=46846
-extract_civitai_model_id() {
-  local url="$1"
-  # 패턴 1: /api/download/models/<ID>
-  if [[ "$url" =~ civitai\.com/api/download/models/([0-9]+) ]]; then
-    echo "${BASH_REMATCH[1]}"
-    return 0
-  fi
-  # 패턴 2: ?modelVersionId=<ID>
-  if [[ "$url" =~ modelVersionId=([0-9]+) ]]; then
-    echo "${BASH_REMATCH[1]}"
-    return 0
-  fi
-  return 1
-}
-
-# civitai-downloader를 사용한 다운로드
-provisioning_civitai_download() {
-  local dir="$1"
-  local url="$2"
-  local model_id
-
-  model_id=$(extract_civitai_model_id "$url") || return 1
-
-  if [[ -z "${CIVITAI_TOKEN:-}" ]]; then
-    log "⚠️ CIVITAI_API_KEY(CIVITAI_TOKEN)가 설정되지 않았습니다. civitai-downloader를 사용할 수 없습니다."
-    return 1
-  fi
-
-  if ! command -v download-model >/dev/null 2>&1; then
-    log "⚠️ civitai-downloader가 설치되어 있지 않습니다."
-    return 1
-  fi
-
-  mkdir -p "$dir"
-  log "🔽 Civitai 다운로드 (model_id=$model_id) -> $dir"
-
-  set +e
-  download-model "$model_id" "$dir"
-  local rc=$?
-  set -e
-  return $rc
-}
 
 normalize_comfy_paths() {
   if [[ -d "$INTERNAL_COMFY" && -f "$INTERNAL_COMFY/main.py" ]]; then
@@ -235,6 +171,8 @@ PY
   [[ $rc -eq 0 ]] && return 0 || return 1
 }
 
+BROWSER_UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
 provisioning_download_to_dir() {
   local dir="$1"
   local url="$2"
@@ -242,27 +180,18 @@ provisioning_download_to_dir() {
 
   local final_url="$url"
   local auth_header=""
+  local ua_header=""
   local hf_token="$(get_hf_token)"
 
   if [[ -n "$hf_token" ]] && [[ "$url" =~ huggingface\.co ]]; then
     auth_header="Authorization: Bearer ${hf_token}"
   fi
 
-  local name="${url%%\?*}"
-  name="${name##*/}"
-
-  log "🔽 다운로드 시작: $name"
-  log "📂 저장 위치: $dir"
-
-  # Civitai URL인 경우 civitai-downloader 우선 시도
+  # Civitai URL: Bearer 토큰 + query param + User-Agent 설정 (403 방지)
   if [[ "$url" =~ civitai\.com ]]; then
-    if provisioning_civitai_download "$dir" "$url"; then
-      log "✅ 다운로드 완료 (civitai-downloader): $name"
-      return 0
-    fi
-    log "⚠️ civitai-downloader 실패, 일반 다운로드로 폴백합니다."
-    # 폴백: 기존 토큰 URL 방식
+    ua_header="$BROWSER_UA"
     if [[ -n "${CIVITAI_API_KEY:-}" ]]; then
+      auth_header="Authorization: Bearer ${CIVITAI_API_KEY}"
       if [[ "$url" == *"?"* ]]; then
         final_url="${url}&token=${CIVITAI_API_KEY}"
       else
@@ -270,6 +199,12 @@ provisioning_download_to_dir() {
       fi
     fi
   fi
+
+  local name="${url%%\?*}"
+  name="${name##*/}"
+
+  log "🔽 다운로드 시작: $name"
+  log "📂 저장 위치: $dir"
 
   # HuggingFace URL인 경우 hf_transfer 우선 시도
   if [[ "$url" =~ huggingface\.co ]]; then
@@ -281,8 +216,8 @@ provisioning_download_to_dir() {
 
   set +e
   if command -v aria2c >/dev/null 2>&1; then
-    # aria2c: 로그 도배 방지를 위해 5초마다 진행률 요약 출력 (--summary-interval=5)
     local aria2_opts=("-x" "16" "-s" "16" "-k" "1M" "--summary-interval=5" "--console-log-level=notice")
+    [[ -n "$ua_header" ]] && aria2_opts+=("--user-agent=$ua_header")
     if [[ -n "$auth_header" ]]; then
       aria2c "${aria2_opts[@]}" --header="$auth_header" -o "$name" -d "$dir" "$final_url"
     else
@@ -290,19 +225,21 @@ provisioning_download_to_dir() {
     fi
     rc=$?
   elif command -v wget >/dev/null 2>&1; then
-    # wget: 로그 파일이 깨지지 않게 줄바꿈(noscroll)으로 진행률 깔끔하게 출력
+    local wget_opts=(--show-progress --progress=bar:force:noscroll)
+    [[ -n "$ua_header" ]] && wget_opts+=("--user-agent=$ua_header")
     if [[ -n "$auth_header" ]]; then
-      wget --header="$auth_header" --show-progress --progress=bar:force:noscroll -O "$dir/$name" "$final_url"
+      wget "${wget_opts[@]}" --header="$auth_header" -O "$dir/$name" "$final_url"
     else
-      wget --show-progress --progress=bar:force:noscroll -O "$dir/$name" "$final_url"
+      wget "${wget_opts[@]}" -O "$dir/$name" "$final_url"
     fi
     rc=$?
   else
-    # curl: 깔끔한 프로그레스 바(-#) 출력
+    local curl_opts=(-fL -#)
+    [[ -n "$ua_header" ]] && curl_opts+=(-A "$ua_header")
     if [[ -n "$auth_header" ]]; then
-      curl -fL -# -H "$auth_header" -o "$dir/$name" "$final_url"
+      curl "${curl_opts[@]}" -H "$auth_header" -o "$dir/$name" "$final_url"
     else
-      curl -fL -# -o "$dir/$name" "$final_url"
+      curl "${curl_opts[@]}" -o "$dir/$name" "$final_url"
     fi
     rc=$?
   fi
@@ -378,11 +315,6 @@ provisioning_install_custom_nodes() {
 # ============================================================
 provisioning_start() {
   # normalize_comfy_paths
-
-  # 0. civitai-downloader 설치 (CIVITAI_API_KEY가 있을 때만)
-  if [[ -n "${CIVITAI_TOKEN:-}" ]]; then
-    provisioning_install_civitai_downloader
-  fi
 
   # 1. 커스텀 노드 설치 실행 (추가된 부분)
   provisioning_install_custom_nodes
