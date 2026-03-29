@@ -14,6 +14,11 @@ export PIP_NO_INPUT=1
 export GIT_TERMINAL_PROMPT=0
 export DEBIAN_FRONTEND=noninteractive
 
+# Civitai API key 세팅 (CIVITAI_API_KEY -> civitai-downloader가 사용하는 CIVITAI_TOKEN으로 매핑)
+if [[ -n "${CIVITAI_API_KEY:-}" ]]; then
+  export CIVITAI_TOKEN="${CIVITAI_API_KEY}"
+fi
+
 # ============================================================
 # 1. n8n 동적 데이터 호출 (Vast.ai 환경 변수 N8N_WEBHOOK_URL 필요)
 # ============================================================
@@ -99,6 +104,68 @@ get_hf_token() {
   echo ""
 }
 
+# ============================================================
+# civitai-downloader 설치
+# ============================================================
+provisioning_install_civitai_downloader() {
+  if command -v download-model >/dev/null 2>&1; then
+    log "✅ civitai-downloader 이미 설치됨"
+    return 0
+  fi
+  log "📦 civitai-downloader 설치 중..."
+  curl -fSL https://raw.githubusercontent.com/ashleykleynhans/civitai-downloader/main/download.py \
+    -o /usr/local/bin/download-model
+  chmod +x /usr/local/bin/download-model
+  log "✅ civitai-downloader 설치 완료"
+}
+
+# civitai URL에서 모델 ID 추출
+# 지원 패턴:
+#   https://civitai.com/api/download/models/46846
+#   https://civitai.com/models/1234567?modelVersionId=46846
+extract_civitai_model_id() {
+  local url="$1"
+  # 패턴 1: /api/download/models/<ID>
+  if [[ "$url" =~ civitai\.com/api/download/models/([0-9]+) ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  # 패턴 2: ?modelVersionId=<ID>
+  if [[ "$url" =~ modelVersionId=([0-9]+) ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  return 1
+}
+
+# civitai-downloader를 사용한 다운로드
+provisioning_civitai_download() {
+  local dir="$1"
+  local url="$2"
+  local model_id
+
+  model_id=$(extract_civitai_model_id "$url") || return 1
+
+  if [[ -z "${CIVITAI_TOKEN:-}" ]]; then
+    log "⚠️ CIVITAI_API_KEY(CIVITAI_TOKEN)가 설정되지 않았습니다. civitai-downloader를 사용할 수 없습니다."
+    return 1
+  fi
+
+  if ! command -v download-model >/dev/null 2>&1; then
+    log "⚠️ civitai-downloader가 설치되어 있지 않습니다."
+    return 1
+  fi
+
+  mkdir -p "$dir"
+  log "🔽 Civitai 다운로드 (model_id=$model_id) -> $dir"
+
+  set +e
+  download-model "$model_id" "$dir"
+  local rc=$?
+  set -e
+  return $rc
+}
+
 normalize_comfy_paths() {
   if [[ -d "$INTERNAL_COMFY" && -f "$INTERNAL_COMFY/main.py" ]]; then
     ln -sfn "$INTERNAL_COMFY" "$COMFY_WORKSPACE"
@@ -181,20 +248,30 @@ provisioning_download_to_dir() {
     auth_header="Authorization: Bearer ${hf_token}"
   fi
 
-  if [[ -n "${CIVITAI_API_KEY:-}" ]] && [[ "$url" =~ civitai\.com ]]; then
-    if [[ "$url" == *"?"* ]]; then
-      final_url="${url}&token=${CIVITAI_API_KEY}"
-    else
-      final_url="${url}?token=${CIVITAI_API_KEY}"
-    fi
-  fi
-
   local name="${url%%\?*}"
   name="${name##*/}"
 
   log "🔽 다운로드 시작: $name"
   log "📂 저장 위치: $dir"
 
+  # Civitai URL인 경우 civitai-downloader 우선 시도
+  if [[ "$url" =~ civitai\.com ]]; then
+    if provisioning_civitai_download "$dir" "$url"; then
+      log "✅ 다운로드 완료 (civitai-downloader): $name"
+      return 0
+    fi
+    log "⚠️ civitai-downloader 실패, 일반 다운로드로 폴백합니다."
+    # 폴백: 기존 토큰 URL 방식
+    if [[ -n "${CIVITAI_API_KEY:-}" ]]; then
+      if [[ "$url" == *"?"* ]]; then
+        final_url="${url}&token=${CIVITAI_API_KEY}"
+      else
+        final_url="${url}?token=${CIVITAI_API_KEY}"
+      fi
+    fi
+  fi
+
+  # HuggingFace URL인 경우 hf_transfer 우선 시도
   if [[ "$url" =~ huggingface\.co ]]; then
     if provisioning_hf_transfer_download "$dir" "$final_url"; then
       log "✅ 다운로드 완료 (HF Transfer): $name"
@@ -301,6 +378,11 @@ provisioning_install_custom_nodes() {
 # ============================================================
 provisioning_start() {
   # normalize_comfy_paths
+
+  # 0. civitai-downloader 설치 (CIVITAI_API_KEY가 있을 때만)
+  if [[ -n "${CIVITAI_TOKEN:-}" ]]; then
+    provisioning_install_civitai_downloader
+  fi
 
   # 1. 커스텀 노드 설치 실행 (추가된 부분)
   provisioning_install_custom_nodes
