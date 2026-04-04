@@ -17,6 +17,26 @@ export DEBIAN_FRONTEND=noninteractive
 log(){ echo "[provision] $*"; }
 
 # ============================================================
+# n8n 동적 데이터 호출 (커스텀 노드용, Vast.ai 환경 변수 N8N_WEBHOOK_URL 필요)
+# ============================================================
+NODES=()
+
+if [ -n "${N8N_WEBHOOK_URL:-}" ]; then
+    log "🌐 n8n API에서 커스텀 노드 데이터를 호출합니다..."
+
+    MY_CUSTOM_NODES=$(wget -qO- --post-data='{"target": "nodes"}' \
+        --header='Content-Type: application/json' "$N8N_WEBHOOK_URL" || echo "")
+
+    if [ -n "$MY_CUSTOM_NODES" ] && [ "$MY_CUSTOM_NODES" != "null" ]; then
+        IFS=';' read -ra NODE_ARRAY <<< "$MY_CUSTOM_NODES"
+        for repo in "${NODE_ARRAY[@]}"; do
+            [[ -z "${repo// }" ]] && continue
+            NODES+=("$repo")
+        done
+    fi
+fi
+
+# ============================================================
 # 환경 변수
 # ============================================================
 # HF_MODELS_REPO: 다운로드할 HF 리포지토리 (세미콜론 구분, [user]/[repo] 형식)
@@ -129,11 +149,10 @@ link_models() {
 }
 
 # ============================================================
-# 커스텀 노드 설치
+# 커스텀 노드 설치 (n8n에서 가져온 NODES 배열 사용)
 # ============================================================
-# CUSTOM_NODES 환경 변수: 세미콜론 구분 Git URL 목록
 install_custom_nodes() {
-  if [[ -z "${CUSTOM_NODES:-}" ]]; then
+  if [[ ${#NODES[@]} -eq 0 ]]; then
     log "ℹ️ 설치할 커스텀 노드가 없습니다."
     return 0
   fi
@@ -143,11 +162,7 @@ install_custom_nodes() {
 
   log "📦 커스텀 노드 클론 및 의존성 설치를 시작합니다..."
 
-  IFS=';' read -ra NODE_ARRAY <<< "$CUSTOM_NODES"
-  for repo_url in "${NODE_ARRAY[@]}"; do
-    repo_url="$(echo "$repo_url" | xargs)"
-    [[ -z "$repo_url" ]] && continue
-
+  for repo_url in "${NODES[@]}"; do
     local repo_name
     repo_name=$(basename -s .git "$repo_url")
     local target_dir="$custom_nodes_dir/$repo_name"
