@@ -98,7 +98,7 @@ download_models() {
     log "🔽 HF 다운로드 시작: $repo -> $MODELS_DIR"
 
     set +e
-    hf download "$repo" --local-dir "$MODELS_DIR"
+    hf sync "$MODELS_DIR" "bucket://buckets/$repo"
     local rc=$?
     set -e
 
