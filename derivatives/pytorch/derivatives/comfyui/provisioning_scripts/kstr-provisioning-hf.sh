@@ -78,9 +78,7 @@ download_models() {
     log "🔽 HF 다운로드 시작: $repo -> $MODELS_DIR"
 
     set +e
-    hf download "$repo" \
-      --local-dir "$MODELS_DIR" \
-      --local-dir-use-symlinks False
+    hf download "$repo" --local-dir "$MODELS_DIR"
     local rc=$?
     set -e
 
