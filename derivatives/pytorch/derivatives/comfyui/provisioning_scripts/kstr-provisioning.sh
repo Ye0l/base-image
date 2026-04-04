@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 1. logger 패키지 설치 (명령어 실행 전 확실하게 준비)
-apt-get update && apt-get install -y bsdutils
+apt-get update && apt-get install -y bsdutils aria2
 
 LOG_FILE="/workspace/provisioning.log"
 
