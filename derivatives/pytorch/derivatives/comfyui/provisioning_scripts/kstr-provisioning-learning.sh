@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 1. logger 패키지 설치 (명령어 실행 전 확실하게 준비)
+apt-get update && apt-get install -y bsdutils aria2
+
+LOG_FILE="/workspace/provisioning.log"
+
+# 2. tee 명령어에 프로세스 치환 >(...)을 추가하여 logger로 데이터 전송
+exec > >(tee -a "$LOG_FILE" >(logger -n lab.kstr.dev -P 1514 -d -t "vast-ai-comfyui")) 2>&1
+
+# 🌟 [여기 추가] 무한 대기(Deadlock) 방지용 환경변수 세팅
+export PIP_NO_INPUT=1
+export GIT_TERMINAL_PROMPT=0
+export DEBIAN_FRONTEND=noninteractive
+
+
+
+# ============================================================
+# 1. n8n 동적 데이터 호출 (Vast.ai 환경 변수 N8N_WEBHOOK_URL 필요)
+NODES=()
+
+log(){ echo "[provision] $*"; }
+
+if [ -n "${N8N_WEBHOOK_URL:-}" ]; then
+    log "🌐 n8n API에서 프로비저닝 데이터를 동적으로 호출합니다..."
+    
+    MY_CUSTOM_NODES=$(wget -qO- --post-data='{"target": "nodes", "type": "learning"}' \
+        --header='Content-Type: application/json' "$N8N_WEBHOOK_URL" || echo "")
+
+    # 커스텀 노드 리스트를 배열(NODES)로 변환
+    if [ -n "$MY_CUSTOM_NODES" ] && [ "$MY_CUSTOM_NODES" != "null" ]; then
+        IFS=';' read -ra NODE_ARRAY <<< "$MY_CUSTOM_NODES"
+        for repo in "${NODE_ARRAY[@]}"; do
+            [[ -z "${repo// }" ]] && continue
+            NODES+=("$repo")
+        done
+    fi
+fi
+
+
+
+replace_with_link() {
+    local SOURCE_DIR="$1"  # 링크할 원본 (b)
+    local TARGET_LINK="$2" # 삭제하고 링크로 만들 이름 (a)
+
+    echo "--- 작업 시작: $TARGET_LINK -> $SOURCE_DIR ---"
+
+    # 대상(TARGET_LINK)이 존재하는지 확인
+    if [ -e "$TARGET_LINK" ]; then
+        if [ -L "$TARGET_LINK" ]; then
+            echo "알림: '$TARGET_LINK'는 이미 심볼릭 링크입니다. 기존 링크를 제거합니다."
+            rm "$TARGET_LINK"
+        elif [ -d "$TARGET_LINK" ]; then
+            echo "알림: 기존 폴더 '$TARGET_LINK'를 삭제합니다."
+            rm -rf "$TARGET_LINK"
+        else
+            echo "알림: '$TARGET_LINK'가 일반 파일입니다. 삭제합니다."
+            rm "$TARGET_LINK"
+        fi
+    fi
+
+    # 원본(SOURCE_DIR) 존재 여부 확인 후 링크 생성
+    if [ -d "$SOURCE_DIR" ]; then
+        ln -s "$SOURCE_DIR" "$TARGET_LINK"
+        echo "성공: '$TARGET_LINK'가 '$SOURCE_DIR'을(를) 가리키도록 설정되었습니다."
+    else
+        echo "오류: 원본 폴더 '$SOURCE_DIR'가 존재하지 않아 링크를 생성할 수 없습니다."
+        return 1
+    fi
+}
+
+replace_with_link "/workspace/ComfyUI/models/checkpoints" "/workspace/ComfyUI/models/unet"
+
+# ============================================================
+# DO NOT EDIT BELOW (커뮤니티 고수의 무적 엔진)
+# ============================================================
+
+WORKSPACE="${WORKSPACE:-/workspace}"
+COMFY_WORKSPACE="/workspace/ComfyUI"
+INTERNAL_COMFY="/opt/workspace-internal/ComfyUI"
+
+PYTHON_BIN="${PYTHON_BIN:-/venv/main/bin/python}"
+PIP_BIN="${PIP_BIN:-/venv/main/bin/pip}"
+APT_INSTALL="${APT_INSTALL:-apt-get install -y --no-install-recommends}"
+
+NODE_REQ_FAILS=()
+
+
+normalize_comfy_paths() {
+  if [[ -d "$INTERNAL_COMFY" && -f "$INTERNAL_COMFY/main.py" ]]; then
+    ln -sfn "$INTERNAL_COMFY" "$COMFY_WORKSPACE"
+    log "Linked $COMFY_WORKSPACE -> $INTERNAL_COMFY"
+  fi
+}
+
+pip_install() {
+  if [[ -x "$PIP_BIN" ]]; then
+    "$PIP_BIN" install --no-cache-dir "$@"
+    return 0
+  fi
+  pip install --no-cache-dir "$@"
+}
+
+
+print_summary() {
+  if [[ ${#NODE_REQ_FAILS[@]} -gt 0 ]]; then
+    log "---- Node requirements failures ----"
+    for x in "${NODE_REQ_FAILS[@]}"; do log "  - $x"; done
+  fi
+
+}
+
+# ============================================================
+# 커스텀 노드 설치 함수 (새로 추가)
+# ============================================================
+provisioning_install_custom_nodes() {
+  local custom_nodes_dir="${COMFY_WORKSPACE}/custom_nodes"
+  mkdir -p "$custom_nodes_dir"
+
+  # NODES 배열에 값이 없으면 스킵
+  if [[ ${#NODES[@]} -eq 0 ]]; then
+    log "ℹ️ 설치할 커스텀 노드가 없습니다."
+    return 0
+  fi
+
+  log "📦 커스텀 노드 클론 및 의존성 설치를 시작합니다..."
+  
+  for repo_url in "${NODES[@]}"; do
+    # URL에서 저장소 이름만 추출 (예: https://.../ComfyUI-Chibi-Nodes.git -> ComfyUI-Chibi-Nodes)
+    local repo_name
+    repo_name=$(basename -s .git "$repo_url")
+    local target_dir="$custom_nodes_dir/$repo_name"
+
+    # 이미 폴더가 존재하면 스킵
+    if [[ -d "$target_dir" ]]; then
+      log "⏩ 이미 존재함 (스킵): $repo_name"
+      continue
+    fi
+
+    log "⬇️ 클론 중: $repo_name"
+    # --depth 1 옵션으로 최신 커밋만 빠르게 가져옵니다.
+    if git clone -q --depth=1 "$repo_url" "$target_dir"; then
+      # requirements.txt 파일이 존재하면 파이썬 패키지 설치
+      if [[ -f "$target_dir/requirements.txt" ]]; then
+        log "⚙️ 의존성 설치 중: $repo_name/requirements.txt"
+        if ! pip_install -r "$target_dir/requirements.txt"; then
+          log "❌ 의존성 설치 실패: $repo_name"
+          NODE_REQ_FAILS+=("$repo_name")
+        fi
+      fi
+    else
+      log "❌ Git 클론 실패: $repo_url"
+      NODE_REQ_FAILS+=("$repo_url")
+    fi
+  done
+}
+
+# ============================================================
+# 기존 메인 실행 함수 수정
+# ============================================================
+provisioning_start() {
+  # normalize_comfy_paths
+
+  # 1. 커스텀 노드 설치 실행 (추가된 부분)
+  provisioning_install_custom_nodes
+
+
+
+  # 실패한 내역 출력
+  print_summary
+  log "🎉 완벽한 프로비저닝 완료!"
+}
+
+# 스크립트 실행
+provisioning_start
