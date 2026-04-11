@@ -4,6 +4,9 @@ set -euo pipefail
 # 1. logger 패키지 설치 (명령어 실행 전 확실하게 준비)
 apt-get update && apt-get install -y bsdutils btop
 
+# 1. 설정 디렉토리 강제 생성
+mkdir -p ~/.config/btop
+
 cat <<EOF > ~/.config/btop/btop.conf
 # 핵심 커스텀 설정
 color_theme = "tokyo_night"
