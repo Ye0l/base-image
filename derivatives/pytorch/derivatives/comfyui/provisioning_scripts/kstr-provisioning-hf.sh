@@ -4,18 +4,22 @@ set -euo pipefail
 # 1. logger 패키지 설치 (명령어 실행 전 확실하게 준비)
 apt-get update && apt-get install -y bsdutils btop
 
-# 설정 파일 경로 변수 지정
-BTOP_CONF="$HOME/.config/btop/btop.conf"
-# 1. 물리 디스크 제한 해제 (가상 파티션 포함)
-sed -i 's/^only_physical.*/only_physical = False/' $BTOP_CONF
-# 2. fstab 무시 (실제 마운트된 것만 표시)
-sed -i 's/^use_fstab.*/use_fstab = False/' $BTOP_CONF
-# 3. 디스크 필터 초기화 (모든 경로 표시)
-sed -i 's/^disks_filter.*/disks_filter = ""/' $BTOP_CONF
-# 4. 업데이트 속도 0.5초로 고정
-sed -i 's/^update_ms.*/update_ms = 500/' $BTOP_CONF
-# 5. 테마 설정 (tokyo_night 추천)
-sed -i 's/^color_theme.*/color_theme = "tokyo_night"/' $BTOP_CONF
+cat <<EOF > ~/.config/btop/btop.conf
+# 핵심 커스텀 설정
+color_theme = "tokyo_night"
+update_ms = 500
+only_physical = False
+use_fstab = False
+disks_filter = ""
+
+# 추가하면 좋은 '꿀' 옵션들
+proc_sorting = "cpu lazy"      # 프로세스 정렬을 CPU 점유율 순으로 (가장 흔히 씀)
+proc_gradient = True           # 프로세스 리스트에 그라데이션 효과 (가독성 UP)
+cpu_canvas_precision = True    # CPU 그래프를 더 정밀하게 표현
+check_temp = True              # CPU 온도 표시 (하드웨어 지원 시)
+mem_graphs = True              # 메모리 사용량 그래프 표시
+show_uptime = True             # 서버 켜진 시간 표시
+EOF
 
 LOG_FILE="/workspace/provisioning.log"
 
