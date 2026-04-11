@@ -13,7 +13,7 @@ color_theme = "tokyo_night"
 update_ms = 500
 only_physical = False
 use_fstab = False
-disks_filter = ""
+disks_filter = "/"
 
 # 추가하면 좋은 '꿀' 옵션들
 proc_sorting = "cpu lazy"      # 프로세스 정렬을 CPU 점유율 순으로 (가장 흔히 씀)
