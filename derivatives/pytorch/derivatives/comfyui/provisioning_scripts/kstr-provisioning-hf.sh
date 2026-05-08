@@ -83,7 +83,7 @@ pip_install() {
 setup_hf() {
   log "🔧 hf CLI 및 hf_transfer 설치 중..."
   set +e
-  pip_install -q hf_transfer huggingface_hub[cli]
+  pip_install -q -U hf_transfer huggingface_hub[cli]
   local rc=$?
   set -e
   if [[ $rc -ne 0 ]]; then
