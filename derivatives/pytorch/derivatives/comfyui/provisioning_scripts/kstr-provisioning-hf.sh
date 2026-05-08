@@ -63,11 +63,11 @@ fi
 #   예: HF_MODELS_REPO="myuser/comfyui-models;myuser/extra-loras"
 # HF_TOKEN: (선택) 비공개 리포지토리용 HF 토큰
 
-MODELS_DIR="/workspace/models"
-COMFY_MODELS="/workspace/ComfyUI/models"
+export MODELS_DIR="/workspace/models"
+export COMFY_MODELS="/workspace/ComfyUI/models"
 
-PYTHON_BIN="${PYTHON_BIN:-/venv/main/bin/python}"
-PIP_BIN="${PIP_BIN:-/venv/main/bin/pip}"
+export PYTHON_BIN="${PYTHON_BIN:-/venv/main/bin/python}"
+export PIP_BIN="${PIP_BIN:-/venv/main/bin/pip}"
 
 pip_install() {
   if [[ -x "$PIP_BIN" ]]; then
